@@ -1,11 +1,18 @@
-FROM alpine:3.7
+FROM golang:1.15-alpine AS build-env
+WORKDIR /go/src/app
+ENV  GO111MODULE=on
+ENV  GOPROXY=https://goproxy.cn
+COPY . .
+RUN set -x \
+    && /bin/sed -i 's,http://dl-cdn.alpinelinux.org,https://mirrors.aliyun.com,g' /etc/apk/repositories \
+    && apk update && apk add git \
+    && go build
 
-EXPOSE 8080
+FROM alpine:latest
+RUN set -x \
+    && /bin/sed -i 's,http://dl-cdn.alpinelinux.org,https://mirrors.aliyun.com,g' /etc/apk/repositories \
+    && apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+COPY --from=build-env /go/src/app/api2html .
+ENTRYPOINT [ "./api2html" ]
+CMD ["-h"]
 
-ADD ./api2html /etc/api2html/api2html
-
-WORKDIR /etc/api2html/
-
-ENTRYPOINT [ "/etc/api2html/./api2html" ]
-
-CMD [ "-h" ]
